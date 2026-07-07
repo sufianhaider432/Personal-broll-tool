@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reel Studio — Free B-Roll Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --ink:#121110;
+    --ink-2:#0d0c0b;
+    --panel:#1a1815;
+    --panel-2:#211e19;
+    --line:#312d25;
+    --line-soft:#252119;
+    --paper:#f4efe3;
+    --paper-dim:#9b937f;
+    --paper-dim2:#6f6857;
+    --amber:#e8a33d;
+    --amber-bright:#f4b355;
+    --amber-dim:#8a6a35;
+    --green:#7fae7a;
+    --red:#c86a5a;
+    --radius:6px;
+    --radius-sm:3px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--ink);color:var(--paper);font-family:'Inter',sans-serif;padding-bottom:0;}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+  ::selection{background:var(--amber);color:var(--ink);}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 28px;
+    background:rgba(18,17,16,.85);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:30px;height:30px;border-radius:7px;
+    background:linear-gradient(135deg,var(--amber),#c97f2a);
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;flex-shrink:0;
+  }
+  .brand .name{
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:17px;
+    letter-spacing:.02em;text-transform:uppercase;
+  }
+  .brand .name em{font-style:normal;color:var(--amber);}
+  .nav-badge{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;
+    color:var(--paper-dim);border:1px solid var(--line);padding:5px 10px;border-radius:20px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .nav-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    padding:72px 24px 52px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(232,163,61,.10), transparent 65%),
+      var(--ink);
+  }
+  header.hero::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 3px);
+    opacity:.4;
+  }
+  .hero-inner{position:relative;max-width:640px;margin:0 auto;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
+    color:var(--amber);text-transform:uppercase;
+    border:1px solid var(--amber-dim);padding:6px 14px;border-radius:20px;
+    background:rgba(232,163,61,.06);
+  }
+  h1{
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:46px;
+    letter-spacing:.005em;line-height:1.08;margin:20px 0 14px;
+  }
+  h1 em{font-style:normal;color:var(--amber);}
+  .sub{color:var(--paper-dim);font-size:16px;max-width:48ch;margin:0 auto;line-height:1.65;}
+
+  .timecode{
+    margin-top:32px;display:inline-flex;gap:2px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--paper-dim2);
+    border:1px solid var(--line);border-radius:20px;padding:8px 18px;
+    letter-spacing:.05em;
+  }
+  .timecode b{color:var(--amber);font-weight:600;}
+
+  .feature-strip{
+    max-width:820px;margin:44px auto 0;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--line-soft);border:1px solid var(--line-soft);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .feature{
+    background:var(--panel);padding:20px 18px;text-align:left;
+  }
+  .feature .fi{font-size:18px;margin-bottom:10px;display:block;}
+  .feature .ft{font-family:'Oswald',sans-serif;font-size:13.5px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;margin-bottom:6px;}
+  .feature .fd{font-size:12.5px;color:var(--paper-dim);line-height:1.5;}
+
+  /* ---------- MAIN ---------- */
+  .wrap{max-width:780px;margin:0 auto;padding:56px 20px 40px;}
+  .section-tag{
+    display:flex;align-items:center;gap:12px;margin-bottom:16px;
+  }
+  .section-tag .slate-num{
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);
+    background:var(--amber);width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:600;
+  }
+  .section-tag h2{
+    font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;letter-spacing:.03em;
+    text-transform:uppercase;margin:0;flex:1;
+  }
+  .section-tag .note{font-size:11px;color:var(--paper-dim2);font-family:'JetBrains Mono',monospace;}
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:36px;padding:24px;
+    box-shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 12px 30px -18px rgba(0,0,0,.6);
+  }
+
+  label.field-label{
+    display:block;font-size:11.5px;color:var(--paper-dim);margin-bottom:8px;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.04em;text-transform:uppercase;
+  }
+  input[type=text], input[type=password], textarea, select{
+    width:100%;background:var(--ink-2);border:1px solid var(--line);color:var(--paper);
+    padding:13px 15px;border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:14px;
+    outline:none;transition:border-color .15s;
+  }
+  input:focus, textarea:focus, select:focus{border-color:var(--amber);}
+  input::placeholder, textarea::placeholder{color:var(--paper-dim2);}
+  textarea{resize:vertical;min-height:170px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;}
+
+  select{
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239b937f'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 15px center;
+  }
+
+  .key-row{display:flex;gap:10px;}
+  .key-row input{flex:1;}
+  .btn{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
+    background:var(--panel-2);color:var(--paper);border:1px solid var(--line);
+    padding:0 18px;border-radius:var(--radius-sm);cursor:pointer;transition:.15s;
+  }
+  .btn:hover{border-color:var(--amber);color:var(--amber);}
+  .btn-primary{background:var(--amber);color:var(--ink);border:none;font-weight:600;}
+  .btn-primary:hover{background:var(--amber-bright);color:var(--ink);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .hint{font-size:12px;color:var(--paper-dim2);margin-top:10px;line-height:1.5;}
+  .hint a{color:var(--amber);text-decoration:none;}
+  .hint a:hover{text-decoration:underline;}
+
+  .grid-niche{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .niche-tile{
+    background:var(--ink-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:14px 6px;text-align:center;cursor:pointer;font-size:11.5px;color:var(--paper-dim);
+    transition:.15s;
+  }
+  .niche-tile:hover{border-color:var(--amber-dim);}
+  .niche-tile .ic{font-size:19px;display:block;margin-bottom:6px;}
+  .niche-tile.active{border-color:var(--amber);color:var(--amber);background:rgba(232,163,61,.07);}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;}
+  .full{margin-top:18px;}
+
+  .stat-row{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:18px;padding-top:18px;border-top:1px dashed var(--line);
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--paper-dim);
+    letter-spacing:.03em;
+  }
+  .stat-row b{color:var(--amber);font-size:18px;font-family:'Oswald',sans-serif;}
+
+  .go-btn{
+    width:100%;margin-top:22px;padding:17px;
+    font-family:'Oswald',sans-serif;font-size:14.5px;letter-spacing:.06em;text-transform:uppercase;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .spinner{
+    width:14px;height:14px;border-radius:50%;
+    border:2px solid rgba(18,17,16,.25);border-top-color:var(--ink);
+    animation:spin .7s linear infinite;display:none;
+  }
+  .go-btn.busy .spinner{display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .progress-bar{height:3px;background:var(--panel-2);border-radius:2px;overflow:hidden;margin-top:20px;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--amber-dim),var(--amber));width:0%;transition:width .35s;}
+
+  /* ---------- RESULTS ---------- */
+  .results-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+  .seg{
+    display:flex;gap:14px;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px;transition:border-color .2s;
+  }
+  .seg.done{border-color:var(--line);}
+  .seg.err{border-color:rgba(200,106,90,.4);}
+  .thumb{
+    width:76px;height:52px;border-radius:var(--radius-sm);background:var(--ink-2);
+    flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;
+    color:var(--paper-dim2);font-size:16px;
+  }
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .seg-body{flex:1;min-width:0;}
+  .seg-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  .tc{font-family:'JetBrains Mono',monospace;color:var(--amber);font-size:11.5px;flex-shrink:0;}
+  .seg-text{
+    font-size:12.5px;color:var(--paper-dim);line-height:1.4;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;
+  }
+  .seg-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}
+  .chip{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;
+    background:var(--panel-2);border:1px solid var(--line);padding:2px 8px;border-radius:20px;color:var(--paper);
+  }
+  .seg-status{font-size:11px;font-family:'JetBrains Mono',monospace;}
+  .seg-status.ok{color:var(--green);}
+  .seg-status.err{color:var(--red);}
+  .seg-status.busy{color:var(--amber);}
+
+  footer{
+    text-align:center;color:var(--paper-dim2);font-size:11.5px;
+    padding:44px 20px 32px;font-family:'JetBrains Mono',monospace;
+    border-top:1px solid var(--line-soft);letter-spacing:.03em;
+  }
+  footer .h{color:var(--red);}
+  footer .credit{color:var(--paper-dim);margin-top:6px;font-size:11px;}
+
+  @media (max-width:560px){
+    h1{font-size:32px;}
+    .grid-niche{grid-template-columns:repeat(3,1fr);}
+    .row2{grid-template-columns:1fr;}
+    .feature-strip{grid-template-columns:1fr;}
+    nav{padding:14px 18px;}
+  }
+
+  input:focus-visible, button:focus-visible, select:focus-visible, textarea:focus-visible, .niche-tile:focus-visible{
+    outline:2px solid var(--amber); outline-offset:2px;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <div class="mark">🎬</div>
+    <div class="name">REEL <em>STUDIO</em></div>
+  </div>
+  <div class="nav-badge"><span class="dot"></span>100% Free · Pexels</div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">B-Roll Engine · Free Forever</span>
+    <h1>Script becomes <em>B-Roll</em>, instantly.</h1>
+    <p class="sub">Smart keyword matching reads every line of your script, then pulls the footage that fits — numbered, zipped, and ready to drop into your timeline. No API costs, no subscriptions.</p>
+    <div class="timecode" id="liveTimecode">00:00:00<b>:00</b></div>
+
+    <div class="feature-strip">
+      <div class="feature">
+        <span class="fi">🧠</span>
+        <div class="ft">Smart keyword engine</div>
+        <div class="fd">Filters filler words and picks the terms that actually carry meaning.</div>
+      </div>
+      <div class="feature">
+        <span class="fi">🗂️</span>
+        <div class="ft">Numbered & zipped</div>
+        <div class="fd">Every clip lands in your export already in timeline order.</div>
+      </div>
+      <div class="feature">
+        <span class="fi">🎯</span>
+        <div class="ft">Niche-aware</div>
+        <div class="fd">12 built-in niches bias every search toward the right visual world.</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Pexels key -->
+  <div class="card">
+    <div class="section-tag">
+      <span class="slate-num">1</span>
+      <h2>Pexels Access</h2>
+      <span class="note">session only</span>
+    </div>
+    <label class="field-label">Pexels API key</label>
+    <div class="key-row">
+      <input type="password" id="pexelsKey" placeholder="Paste your Pexels API key">
+      <button class="btn" id="toggleKey">SHOW</button>
+    </div>
+    <p class="hint">Kept only in this tab's memory — cleared on refresh, never sent anywhere except api.pexels.com. Free key at <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a>.</p>
+  </div>
+
+  <!-- Niche -->
+  <div class="card">
+    <div class="section-tag">
+      <span class="slate-num">2</span>
+      <h2>Choose Your Niche</h2>
+      <span class="note">biases AI reading</span>
+    </div>
+    <div class="grid-niche" id="nicheGrid"></div>
+  </div>
+
+  <!-- Script -->
+  <div class="card">
+    <div class="section-tag">
+      <span class="slate-num">3</span>
+      <h2>Add Your Script</h2>
+    </div>
+    <label class="field-label">Video title / topic (optional)</label>
+    <input type="text" id="videoTitle" placeholder="e.g. 5 Habits That Burn Fat Fast">
+
+    <div class="full">
+      <label class="field-label">Your script</label>
+      <textarea id="script" placeholder="Paste your full video script here..."></textarea>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label class="field-label">Sentences per B-Roll</label>
+        <select id="sentPerRoll">
+          <option value="1">1 sentence</option>
+          <option value="2" selected>2 sentences (recommended)</option>
+          <option value="3">3 sentences</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Quality</label>
+        <select id="quality">
+          <option value="hd" selected>HD</option>
+          <option value="sd">SD (faster)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <span>ESTIMATED B-ROLLS</span>
+      <b id="estCount">—</b>
+    </div>
+
+    <button class="btn btn-primary go-btn" id="goBtn"><span class="spinner"></span><span id="goLabel">🎬 Generate B-Rolls</span></button>
+    <div class="progress-bar" id="progWrap" style="display:none;"><div class="progress-fill" id="progFill"></div></div>
+  </div>
+
+  <div id="timeline" class="results-grid"></div>
+
+</div>
+
+<footer>
+  AI B-ROLL ENGINE · POWERED BY CLAUDE + PEXELS
+  <div class="credit">Made by Sufian Haider <span class="h">♥</span></div>
+</footer>
+
+<script>
+/* live decorative timecode ticker */
+(function(){
+  const el = document.getElementById('liveTimecode');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let frames = 0, secs = 0, mins = 0, hrs = 0;
+  setInterval(() => {
+    frames += 1;
+    if (frames >= 24){ frames = 0; secs += 1; }
+    if (secs >= 60){ secs = 0; mins += 1; }
+    if (mins >= 60){ mins = 0; hrs += 1; }
+    const pad = n => String(n).padStart(2,'0');
+    el.innerHTML = `${pad(hrs)}:${pad(mins)}:${pad(secs)}<b>:${pad(frames)}</b>`;
+  }, 1000/24);
+})();
+
+const NICHES = [
+  ["Finance","💰"],["Tech / AI","🤖"],["Health","❤️"],
+  ["Real Estate","🏠"],["Motivation","🔥"],["Islamic","🕌"],
+  ["Education","📚"],["Business","💼"],["Fitness","💪"],
+  ["Food","🍔"],["Travel","✈️"],["General","🎬"]
+];
+let selectedNiche = "Finance";
+
+const nicheGrid = document.getElementById('nicheGrid');
+NICHES.forEach(([name, icon]) => {
+  const div = document.createElement('div');
+  div.className = 'niche-tile' + (name === selectedNiche ? ' active' : '');
+  div.tabIndex = 0;
+  div.innerHTML = `<span class="ic">${icon}</span>${name}`;
+  const select = () => {
+    document.querySelectorAll('.niche-tile').forEach(t => t.classList.remove('active'));
+    div.classList.add('active');
+    selectedNiche = name;
+  };
+  div.onclick = select;
+  div.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); select(); } };
+  nicheGrid.appendChild(div);
+});
+
+document.getElementById('toggleKey').onclick = () => {
+  const el = document.getElementById('pexelsKey');
+  const btn = document.getElementById('toggleKey');
+  if (el.type === 'password'){ el.type = 'text'; btn.textContent = 'HIDE'; }
+  else { el.type = 'password'; btn.textContent = 'SHOW'; }
+};
+
+function splitSentences(text){
+  return text.replace(/\s+/g,' ').trim().match(/[^.!?]+[.!?]*/g) || [];
+}
+
+function estimate(){
+  const text = document.getElementById('script').value;
+  const per = parseInt(document.getElementById('sentPerRoll').value, 10);
+  const sentences = splitSentences(text).filter(s => s.trim().length > 0);
+  const count = sentences.length ? Math.ceil(sentences.length / per) : 0;
+  document.getElementById('estCount').textContent = count || '—';
+  return sentences;
+}
+document.getElementById('script').addEventListener('input', estimate);
+document.getElementById('sentPerRoll').addEventListener('change', estimate);
+
+function chunk(sentences, size){
+  const out = [];
+  for (let i=0; i<sentences.length; i+=size){
+    out.push(sentences.slice(i, i+size).join(' ').trim());
+  }
+  return out;
+}
+
+/* ---------- Local, free, no-API keyword engine ---------- */
+const STOPWORDS = new Set([
+  "a","an","the","and","or","but","if","then","so","of","in","on","at","to","for",
+  "with","without","from","by","as","is","are","was","were","be","been","being",
+  "this","that","these","those","it","its","i","you","he","she","we","they","them",
+  "his","her","their","our","your","my","me","us","him","not","no","yes","do","does",
+  "did","will","would","can","could","should","shall","may","might","must","have",
+  "has","had","just","very","really","also","too","much","many","more","most","some",
+  "any","all","up","down","out","about","into","over","after","before","again",
+  "here","there","when","where","why","how","what","which","who","whom","because",
+  "than","while","during","only","own","same","such","get","gets","getting","one",
+  "let","lets","us","let's","going","go","goes","went","today","now","okay","ok"
+]);
+
+const NICHE_KEYWORDS = {
+  "Finance": ["money","finance","investing","stock market"],
+  "Tech / AI": ["technology","artificial intelligence","computer","futuristic"],
+  "Health": ["healthcare","wellness","medical","doctor"],
+  "Real Estate": ["real estate","house","architecture","property"],
+  "Motivation": ["success","achievement","sunrise","determination"],
+  "Islamic": ["mosque","prayer","quran","spiritual"],
+  "Education": ["study","learning","classroom","books"],
+  "Business": ["office","corporate","meeting","teamwork"],
+  "Fitness": ["gym","workout","exercise","training"],
+  "Food": ["cooking","restaurant","meal","kitchen"],
+  "Travel": ["travel","landscape","adventure","destination"],
+  "General": ["lifestyle","people","city","nature"]
+};
+
+function extractKeywords(segmentText, niche){
+  const words = segmentText
+    .toLowerCase()
+    .replace(/[^a-z0-9\s'-]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !STOPWORDS.has(w));
+
+  // frequency + longer-word bias (longer words tend to be more specific/visual)
+  const freq = {};
+  words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+  const ranked = Object.keys(freq).sort((a,b) => {
+    if (freq[b] !== freq[a]) return freq[b] - freq[a];
+    return b.length - a.length;
+  });
+
+  const top = ranked.slice(0, 2);
+  const nicheFallback = NICHE_KEYWORDS[niche] || NICHE_KEYWORDS["General"];
+
+  const query = top.length ? top.join(' ') : nicheFallback[0];
+  const alt = top.length > 1
+    ? `${top[0]} ${nicheFallback[0]}`
+    : nicheFallback[Math.floor(Math.random() * nicheFallback.length)];
+
+  return { query, alt };
+}
+
+async function getKeywordsForSegment(segmentText, niche, title){
+  // Local, instant, zero-cost keyword extraction — no external AI call.
+  return extractKeywords(segmentText, niche);
+}
+
+async function searchPexels(query, apiKey, quality){
+  const url = `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+  const res = await fetch(url, { headers: { Authorization: apiKey } });
+  if (!res.ok) throw new Error(`Pexels ${res.status}`);
+  const data = await res.json();
+  if (!data.videos || !data.videos.length) return null;
+  const video = data.videos[0];
+  const files = video.video_files || [];
+  let pick = files.find(f => quality === 'sd' ? f.quality === 'sd' : f.quality === 'hd');
+  if (!pick) pick = files.find(f => f.quality === 'hd') || files[0];
+  return pick ? { link: pick.link, thumb: video.image } : null;
+}
+
+function renderSeg(i, text){
+  const timeline = document.getElementById('timeline');
+  const div = document.createElement('div');
+  div.className = 'seg';
+  div.id = `seg-${i}`;
+  div.innerHTML = `
+    <div class="thumb" id="thumb-${i}">🎞️</div>
+    <div class="seg-body">
+      <div class="seg-top">
+        <span class="tc">${String(i+1).padStart(3,'0')}</span>
+        <span class="seg-text">${text}</span>
+      </div>
+      <div class="seg-chips" id="chips-${i}"></div>
+      <div class="seg-status busy" id="status-${i}">queued…</div>
+    </div>`;
+  timeline.appendChild(div);
+}
+
+function setStatus(i, msg, cls){
+  const el = document.getElementById(`status-${i}`);
+  el.textContent = msg;
+  el.className = `seg-status ${cls}`;
+  document.getElementById(`seg-${i}`).className = `seg ${cls === 'ok' ? 'done' : cls === 'err' ? 'err' : ''}`;
+}
+function setChips(i, chips){
+  document.getElementById(`chips-${i}`).innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+}
+function setThumb(i, url){
+  const el = document.getElementById(`thumb-${i}`);
+  if (url) el.innerHTML = `<img src="${url}" alt="">`;
+}
+
+document.getElementById('goBtn').onclick = async () => {
+  const apiKey = document.getElementById('pexelsKey').value.trim();
+  const title = document.getElementById('videoTitle').value.trim();
+  const per = parseInt(document.getElementById('sentPerRoll').value, 10);
+  const quality = document.getElementById('quality').value;
+  const sentences = estimate();
+
+  if (!apiKey){ alert('Pexels API key daalein pehle.'); return; }
+  if (!sentences.length){ alert('Pehle script paste karein.'); return; }
+
+  const segments = chunk(sentences, per);
+  document.getElementById('timeline').innerHTML = '';
+  segments.forEach((s,i) => renderSeg(i, s));
+
+  const goBtn = document.getElementById('goBtn');
+  const goLabel = document.getElementById('goLabel');
+  goBtn.disabled = true;
+  goBtn.classList.add('busy');
+  goLabel.textContent = 'PROCESSING…';
+  const progWrap = document.getElementById('progWrap');
+  const progFill = document.getElementById('progFill');
+  progWrap.style.display = 'block';
+
+  const zip = new JSZip();
+  const manifest = [];
+
+  for (let i=0; i<segments.length; i++){
+    const seg = segments[i];
+    try {
+      setStatus(i, 'extracting keywords…', 'busy');
+      const kw = await getKeywordsForSegment(seg, selectedNiche, title);
+      setChips(i, [kw.query, kw.alt].filter(Boolean));
+
+      setStatus(i, 'searching Pexels…', 'busy');
+      let result = await searchPexels(kw.query, apiKey, quality);
+      if (!result && kw.alt) result = await searchPexels(kw.alt, apiKey, quality);
+      if (!result) result = await searchPexels(selectedNiche, apiKey, quality);
+
+      if (!result){
+        setStatus(i, 'no footage found', 'err');
+      } else {
+        setThumb(i, result.thumb);
+        setStatus(i, 'downloading clip…', 'busy');
+        const videoRes = await fetch(result.link);
+        const blob = await videoRes.blob();
+        const filename = `${String(i+1).padStart(3,'0')}_${kw.query.replace(/[^a-z0-9]+/gi,'_')}.mp4`;
+        zip.file(filename, blob);
+        manifest.push(`${filename} — segment: "${seg}" — query: ${kw.query}`);
+        setStatus(i, 'added to zip ✓', 'ok');
+      }
+    } catch(err){
+      console.error(err);
+      setStatus(i, `error: ${err.message}`, 'err');
+    }
+    progFill.style.width = `${Math.round(((i+1)/segments.length)*100)}%`;
+  }
+
+  zip.file('manifest.txt', manifest.join('\n'));
+
+  goLabel.textContent = 'ZIPPING…';
+  const content = await zip.generateAsync({ type: 'blob' });
+  const dlUrl = URL.createObjectURL(content);
+  const a = document.createElement('a');
+  a.href = dlUrl;
+  a.download = `${(title || 'broll').replace(/[^a-z0-9]+/gi,'_')}_broll.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  goBtn.disabled = false;
+  goBtn.classList.remove('busy');
+  goLabel.textContent = '🎬 Generate B-Rolls';
+};
+</script>
+</body>
+</html>
